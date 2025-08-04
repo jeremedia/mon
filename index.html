@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon - AI Sysadmin Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Berkeley Mono', 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            grid-template-rows: 60px 1fr;
+            height: 100vh;
+            gap: 1px;
+            background: #111;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            border-bottom: 1px solid #333;
+        }
+
+        .header h1 {
+            color: #4CAF50;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .status-indicator {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .claude-section {
+            background: #1a1a1a;
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .claude-portrait {
+            height: 300px;
+            position: relative;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            border-bottom: 1px solid #333;
+        }
+
+        .claude-message {
+            flex: 1;
+            padding: 20px;
+            border-bottom: 1px solid #333;
+        }
+
+        .message-text {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 3px solid #4CAF50;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .claude-status {
+            padding: 20px;
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .monitoring-section {
+            background: #151515;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 15px;
+            border-left: 3px solid #4CAF50;
+        }
+
+        .metric-card.warning {
+            border-left-color: #FF9800;
+        }
+
+        .metric-card.error {
+            border-left-color: #f44336;
+        }
+
+        .metric-title {
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        .metric-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .metric-card.warning .metric-value {
+            color: #FF9800;
+        }
+
+        .metric-card.error .metric-value {
+            color: #f44336;
+        }
+
+        .services-list {
+            margin-top: 20px;
+        }
+
+        .service-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #2a2a2a;
+            margin-bottom: 5px;
+            border-radius: 4px;
+        }
+
+        .service-name {
+            font-size: 0.9rem;
+        }
+
+        .service-status {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        .status-healthy {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .status-warning {
+            background: #FF9800;
+            color: white;
+        }
+
+        .status-error {
+            background: #f44336;
+            color: white;
+        }
+
+        .canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .loading-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>Mon</h1>
+            <div class="status-indicator">
+                <span id="status-text">All Systems Operational</span>
+                <div class="status-dot" id="status-dot"></div>
+            </div>
+        </div>
+
+        <div class="claude-section">
+            <div class="claude-portrait" id="claude-portrait">
+                <div class="canvas-container">
+                    <canvas id="claude-canvas"></canvas>
+                    <div class="loading-text">Initializing Claude...</div>
+                </div>
+            </div>
+            
+            <div class="claude-message">
+                <div class="message-text" id="claude-message">
+                    Good evening! I'm monitoring your infrastructure. All systems are running smoothly. I'll alert you immediately if anything requires attention.
+                </div>
+            </div>
+            
+            <div class="claude-status">
+                <div>Status: <span id="claude-mode">Monitoring</span></div>
+                <div>Last Check: <span id="last-check">Just now</span></div>
+                <div>Uptime: <span id="uptime">5 days, 14 hours</span></div>
+            </div>
+        </div>
+
+        <div class="monitoring-section">
+            <div class="metric-grid">
+                <div class="metric-card">
+                    <div class="metric-title">Server Health</div>
+                    <div class="metric-value">Excellent</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Active Services</div>
+                    <div class="metric-value">12/12</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Memory Usage</div>
+                    <div class="metric-value">34%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">CPU Load</div>
+                    <div class="metric-value">1.2</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Disk Space</div>
+                    <div class="metric-value">78% Free</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">SSL Certificates</div>
+                    <div class="metric-value">All Valid</div>
+                </div>
+            </div>
+
+            <h3 style="margin-bottom: 15px; color: #4CAF50;">Active Services</h3>
+            <div class="services-list">
+                <div class="service-item">
+                    <span class="service-name">Apache (jer-serve)</span>
+                    <span class="service-status status-healthy">HEALTHY</span>
+                </div>
+                <div class="service-item">
+                    <span class="service-name">Caddy Proxy</span>
+                    <span class="service-status status-healthy">HEALTHY</span>
+                </div>
+                <div class="service-item">
+                    <span class="service-name">hai.domt.app:3050</span>
+                    <span class="service-status status-healthy">HEALTHY</span>
+                </div>
+                <div class="service-item">
+                    <span class="service-name">hsdl-ai.domt.app:3055</span>
+                    <span class="service-status status-healthy">HEALTHY</span>
+                </div>
+                <div class="service-item">
+                    <span class="service-name">mpr.domt.app:3898</span>
+                    <span class="service-status status-healthy">HEALTHY</span>
+                </div>
+                <div class="service-item">
+                    <span class="service-name">enliterator.ai</span>
+                    <span class="service-status status-healthy">HEALTHY</span>
+                </div>
+                <div class="service-item">
+                    <span class="service-name">offline.oknotok.com</span>
+                    <span class="service-status status-healthy">HEALTHY</span>
+                </div>
+                <div class="service-item">
+                    <span class="service-name">DNS Resolution</span>
+                    <span class="service-status status-healthy">HEALTHY</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="js/claude-avatar.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>
