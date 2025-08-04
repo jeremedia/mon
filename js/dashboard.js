@@ -14,7 +14,6 @@ class MonDashboard {
         this.systemStatus = 'healthy';
         
         this.init();
-        this.startMockData(); // Remove when real WebSocket is ready
     }
 
     init() {
@@ -22,8 +21,16 @@ class MonDashboard {
         this.startHeartbeat();
         this.updateTimestamps();
         
-        // Try to connect to WebSocket server
-        // this.connectWebSocket();
+        // Connect to WebSocket server
+        this.connectWebSocket();
+        
+        // Fallback to mock data if WebSocket fails
+        setTimeout(() => {
+            if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+                console.log('Mon: WebSocket failed, using mock data');
+                this.startMockData();
+            }
+        }, 5000);
     }
 
     bindEvents() {
@@ -81,9 +88,8 @@ class MonDashboard {
 
     getWebSocketUrl() {
         const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = location.hostname;
-        const port = location.hostname === 'localhost' ? ':3001' : '';
-        return `${protocol}//${host}${port}/ws`;
+        // Connect to Mon server on Mac dev machine
+        return `${protocol}//100.104.170.10:3001`;
     }
 
     scheduleReconnect() {
