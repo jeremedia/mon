@@ -18,6 +18,28 @@ send_to_mon() {
         > /dev/null 2>&1
 }
 
+# Function to generate English status using Claude CLI
+generate_status_message() {
+    local context="$1"
+    local status="$2"
+    
+    # Only generate messages if Claude CLI is available
+    if command -v claude >/dev/null 2>&1; then
+        local prompt="Based on this system monitoring data: $context. Current status: $status. Generate a concise, professional status message that I (Claude AI sysadmin) would say about the infrastructure. Keep it under 100 characters and sound confident but not robotic."
+        
+        local message=$(echo "$prompt" | claude -p 2>/dev/null | head -1)
+        
+        # Validate message isn't empty and isn't an error
+        if [ -n "$message" ] && [[ ! "$message" =~ ^Error.*$ ]] && [[ ! "$message" =~ ^Invalid.*$ ]]; then
+            echo "$message"
+        else
+            echo "Infrastructure scan complete. All systems operational."
+        fi
+    else
+        echo "Monitoring sweep complete. Standing by."
+    fi
+}
+
 # Collect system metrics
 collect_system_metrics() {
     # CPU usage
@@ -121,6 +143,31 @@ main() {
     collect_system_metrics
     check_services  
     check_domains
+    
+    # Generate overall system summary for Claude message
+    local cpu_val=$(echo "$CPU" | cut -d'.' -f1)
+    local mem_val=$(echo "$MEM" | cut -d'.' -f1)
+    local disk_val="$DISK"
+    
+    # Determine overall status
+    local overall_status="healthy"
+    [ "$cpu_val" -gt 80 ] && overall_status="warning"
+    [ "$mem_val" -gt 80 ] && overall_status="warning"
+    [ "$disk_val" -gt 80 ] && overall_status="warning"
+    [ "$cpu_val" -gt 95 ] && overall_status="critical"
+    [ "$mem_val" -gt 95 ] && overall_status="critical"
+    [ "$disk_val" -gt 95 ] && overall_status="critical"
+    
+    # Create context summary for Claude
+    local context="CPU: ${CPU}%, Memory: ${MEM}%, Disk: ${disk_val}% used, Load: $LOAD, Apache: $APACHE_STATUS"
+    
+    # Generate status message using Claude CLI
+    local claude_message=$(generate_status_message "$context" "$overall_status")
+    
+    # Send Claude message to Mon dashboard
+    if [ -n "$claude_message" ]; then
+        send_to_mon "claude_message" "{\"message\":\"$claude_message\",\"context\":\"$context\",\"status\":\"$overall_status\"}"
+    fi
     
     echo "$(date): Mon monitoring check complete"
 }

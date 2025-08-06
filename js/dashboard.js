@@ -35,8 +35,8 @@ class MonDashboard {
 
     bindEvents() {
         // Handle avatar clicks
-        document.getElementById('claude-portrait').addEventListener('click', () => {
-            this.claudeInteraction();
+        document.getElementById('claude-portrait').addEventListener('click', (event) => {
+            this.claudeInteraction(event);
         });
 
         // Handle window focus for notifications
@@ -51,6 +51,13 @@ class MonDashboard {
             } else {
                 this.onPageVisible();
             }
+        });
+
+        // Handle navigation tabs
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                this.switchTab(tab.dataset.section);
+            });
         });
     }
 
@@ -87,9 +94,9 @@ class MonDashboard {
     }
 
     getWebSocketUrl() {
-        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        // Connect to Mon server on Mac dev machine
-        return `${protocol}//100.104.170.10:3001`;
+        // Always use ws:// for internal Tailscale connection
+        // The Mon server runs HTTP/WS, not HTTPS/WSS
+        return 'ws://100.104.170.10:3001';
     }
 
     scheduleReconnect() {
@@ -231,13 +238,61 @@ class MonDashboard {
     }
 
     showNotification(message, level = 'info') {
+        console.log('Attempting to show notification:', message, 'Permission:', Notification.permission);
+        
         if ('Notification' in window && Notification.permission === 'granted') {
             const title = level === 'critical' ? '🚨 Mon Alert' : '⚠️ Mon Notice';
-            new Notification(title, {
+            const options = {
                 body: message,
-                icon: '/favicon.ico',
-                requireInteraction: level === 'critical'
-            });
+                icon: '/icon-192.png',
+                badge: '/icon-192.png',
+                requireInteraction: level === 'critical',
+                tag: 'mon-alert-' + Date.now(),
+                vibrate: level === 'critical' ? [200, 100, 200] : [200],
+                actions: level === 'critical' ? [
+                    { action: 'view', title: 'View' },
+                    { action: 'dismiss', title: 'Dismiss' }
+                ] : []
+            };
+            
+            // Try service worker notification first (better for PWA)
+            if (window.swRegistration && window.swRegistration.showNotification) {
+                window.swRegistration.showNotification(title, options)
+                    .then(() => console.log('Service Worker notification shown'))
+                    .catch(error => {
+                        console.error('Service Worker notification failed:', error);
+                        // Fallback to regular notification
+                        this.showRegularNotification(title, options);
+                    });
+            } else if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                // Send message to service worker
+                navigator.serviceWorker.controller.postMessage({
+                    type: 'SHOW_NOTIFICATION',
+                    title: title,
+                    options: options
+                });
+                console.log('Notification sent to service worker');
+            } else {
+                // Fallback to regular notification
+                this.showRegularNotification(title, options);
+            }
+        } else {
+            console.log('Notifications not available or not granted');
+        }
+    }
+    
+    showRegularNotification(title, options) {
+        try {
+            const notification = new Notification(title, options);
+            
+            notification.onclick = () => {
+                window.focus();
+                notification.close();
+            };
+            
+            console.log('Regular notification created successfully');
+        } catch (error) {
+            console.error('Regular notification error:', error);
         }
     }
 
@@ -247,7 +302,7 @@ class MonDashboard {
         }
     }
 
-    claudeInteraction() {
+    claudeInteraction(event) {
         // Handle clicks on Claude's portrait
         const interactions = [
             "All systems are running smoothly. How can I assist you?",
@@ -262,6 +317,12 @@ class MonDashboard {
         
         if (window.claudeAvatar) {
             window.claudeAvatar.speak(message);
+        }
+        
+        // Test notification on double-click
+        if (event && event.detail === 2) { // Double click
+            this.showNotification("🎉 Test notification from Mon! Your notifications are working perfectly.", 'critical');
+            this.displayClaudeMessage("Test notification sent! You should see a browser notification now.");
         }
     }
 
@@ -340,16 +401,66 @@ class MonDashboard {
         // Page is visible again, refresh data
         this.lastMessageTime = Date.now();
     }
+
+    switchTab(sectionName) {
+        console.log('Switching to tab:', sectionName);
+        
+        // Request notification permission on first user interaction
+        requestNotificationPermission();
+        
+        // Remove active class from all tabs and sections
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        document.querySelectorAll('.content-section').forEach(section => {
+            section.classList.remove('active');
+        });
+
+        // Add active class to clicked tab and corresponding section
+        const targetTab = document.querySelector(`[data-section="${sectionName}"]`);
+        const targetSection = document.getElementById(sectionName);
+        
+        if (targetTab && targetSection) {
+            targetTab.classList.add('active');
+            targetSection.classList.add('active');
+            console.log('Tab switched successfully to:', sectionName);
+        } else {
+            console.error('Could not find tab or section for:', sectionName);
+        }
+
+        // Update Claude message based on section
+        if (sectionName === 'features') {
+            this.displayClaudeMessage("Here are Mon's current capabilities. Each feature is designed to make infrastructure monitoring more intuitive and conversational.");
+        } else if (sectionName === 'releases') {
+            this.displayClaudeMessage("Mon version 1.0.0 represents the foundation of AI-driven infrastructure monitoring. Future releases will expand capabilities based on real-world usage.");
+        } else if (sectionName === 'monitoring') {
+            this.displayClaudeMessage("Back to live monitoring. I'm continuously watching your infrastructure and will alert you to any issues that require attention.");
+        }
+    }
 }
 
-// Request notification permission
-if ('Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission();
+// Request notification permission when user interacts
+function requestNotificationPermission() {
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
 }
 
 // Initialize dashboard when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.monDashboard = new MonDashboard();
+    
+    // Register service worker for PWA support
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/service-worker.js')
+            .then(registration => {
+                console.log('Service Worker registered:', registration);
+                window.swRegistration = registration;
+            })
+            .catch(error => {
+                console.error('Service Worker registration failed:', error);
+            });
+    }
 });
 
 // Handle page unload

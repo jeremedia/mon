@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mon - AI Sysadmin Dashboard</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Mon">
+    <link rel="apple-touch-icon" href="/icon-192.png">
     <style>
         * {
             margin: 0;
@@ -22,7 +27,7 @@
         .dashboard {
             display: grid;
             grid-template-columns: 400px 1fr;
-            grid-template-rows: 60px 1fr;
+            grid-template-rows: 60px 40px 1fr;
             height: 100vh;
             gap: 1px;
             background: #111;
@@ -64,11 +69,41 @@
             100% { opacity: 1; }
         }
 
+        .nav-tabs {
+            grid-column: 2;
+            background: #1a1a1a;
+            display: flex;
+            border-bottom: 1px solid #333;
+        }
+
+        .nav-tab {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.9rem;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .nav-tab:hover {
+            color: #e0e0e0;
+            background: #2a2a2a;
+        }
+
+        .nav-tab.active {
+            color: #4CAF50;
+            border-bottom-color: #4CAF50;
+        }
+
         .claude-section {
             background: #1a1a1a;
             border-right: 1px solid #333;
             display: flex;
             flex-direction: column;
+            grid-row: 2 / -1;
         }
 
         .claude-portrait {
@@ -203,6 +238,100 @@
             color: rgba(255, 255, 255, 0.6);
             font-size: 0.8rem;
         }
+
+        .content-section {
+            display: none;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        .features-section {
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .feature-group {
+            margin-bottom: 30px;
+        }
+
+        .feature-group h3 {
+            color: #4CAF50;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .feature-list {
+            list-style: none;
+        }
+
+        .feature-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #333;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+        }
+
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+
+        .feature-list li::before {
+            content: "✓";
+            color: #4CAF50;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        .release-notes {
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .release {
+            margin-bottom: 30px;
+            border-left: 3px solid #4CAF50;
+            padding-left: 20px;
+        }
+
+        .release h3 {
+            color: #4CAF50;
+            margin-bottom: 5px;
+        }
+
+        .release-date {
+            color: #888;
+            font-size: 0.8rem;
+            margin-bottom: 15px;
+        }
+
+        .release-section {
+            margin-bottom: 15px;
+        }
+
+        .release-section h4 {
+            color: #e0e0e0;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+
+        .release-section ul {
+            list-style: none;
+            padding-left: 10px;
+        }
+
+        .release-section li {
+            padding: 3px 0;
+            color: #ccc;
+            font-size: 0.85rem;
+        }
+
+        .release-section li::before {
+            content: "•";
+            color: #4CAF50;
+            margin-right: 8px;
+        }
     </style>
 </head>
 <body>
@@ -233,30 +362,37 @@
                 <div>Status: <span id="claude-mode">Monitoring</span></div>
                 <div>Last Check: <span id="last-check">Just now</span></div>
                 <div>Uptime: <span id="uptime">5 days, 14 hours</span></div>
+                <div>Version: <span id="app-version">1.1.0</span></div>
             </div>
         </div>
 
-        <div class="monitoring-section">
+        <div class="nav-tabs">
+            <button class="nav-tab active" data-section="monitoring">Dashboard</button>
+            <button class="nav-tab" data-section="features">Features</button>
+            <button class="nav-tab" data-section="releases">Release Notes</button>
+        </div>
+
+        <div class="content-section active monitoring-section" id="monitoring">
             <div class="metric-grid">
-                <div class="metric-card">
-                    <div class="metric-title">Server Health</div>
-                    <div class="metric-value">Excellent</div>
+                <div class="metric-card" data-metric="cpu">
+                    <div class="metric-title">CPU Usage</div>
+                    <div class="metric-value">15%</div>
+                </div>
+                <div class="metric-card" data-metric="memory">
+                    <div class="metric-title">Memory Usage</div>
+                    <div class="metric-value">34%</div>
+                </div>
+                <div class="metric-card" data-metric="disk">
+                    <div class="metric-title">Disk Space</div>
+                    <div class="metric-value">78% Free</div>
+                </div>
+                <div class="metric-card" data-metric="load">
+                    <div class="metric-title">Load Average</div>
+                    <div class="metric-value">0.8</div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-title">Active Services</div>
                     <div class="metric-value">12/12</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-title">Memory Usage</div>
-                    <div class="metric-value">34%</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-title">CPU Load</div>
-                    <div class="metric-value">1.2</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-title">Disk Space</div>
-                    <div class="metric-value">78% Free</div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-title">SSL Certificates</div>
@@ -297,6 +433,142 @@
                 <div class="service-item">
                     <span class="service-name">DNS Resolution</span>
                     <span class="service-status status-healthy">HEALTHY</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-section features-section" id="features">
+            <div class="feature-group">
+                <h3>🤖 AI Avatar & Interface</h3>
+                <ul class="feature-list">
+                    <li>Three.js 3D geometric avatar with atom-like structure</li>
+                    <li>Status-aware visual states (healthy, warning, critical, speaking)</li>
+                    <li>Interactive avatar responds to clicks with dynamic messages</li>
+                    <li>Real-time animations reflect system health</li>
+                    <li>Evolution-ready design that grows with AI capabilities</li>
+                </ul>
+            </div>
+
+            <div class="feature-group">
+                <h3>📊 Real-time Monitoring</h3>
+                <ul class="feature-list">
+                    <li>Live WebSocket connection to jer-serve infrastructure</li>
+                    <li>System metrics: CPU, Memory, Disk, Load Average</li>
+                    <li>Service status tracking for Apache and Rails applications</li>
+                    <li>Domain health verification via DNS resolution checks</li>
+                    <li>Automated monitoring every 2 minutes via cron job</li>
+                </ul>
+            </div>
+
+            <div class="feature-group">
+                <h3>🧠 Natural Language Intelligence</h3>
+                <ul class="feature-list">
+                    <li>Claude CLI integration for human-readable status messages</li>
+                    <li>Context-aware message generation from raw system data</li>
+                    <li>Intelligent fallbacks when Claude CLI unavailable</li>
+                    <li>Professional, conversational infrastructure updates</li>
+                    <li>Transforms mechanical data into meaningful dialogue</li>
+                </ul>
+            </div>
+
+            <div class="feature-group">
+                <h3>🚨 Smart Alerts & Notifications</h3>
+                <ul class="feature-list">
+                    <li>Browser notifications for critical system events</li>
+                    <li>Automatic window focus during emergencies</li>
+                    <li>Avatar speaks critical alerts with voice synthesis</li>
+                    <li>Status-aware color coding and visual indicators</li>
+                    <li>Intelligent alert prioritization and management</li>
+                </ul>
+            </div>
+
+            <div class="feature-group">
+                <h3>🌐 Infrastructure Integration</h3>
+                <ul class="feature-list">
+                    <li>Tailscale network monitoring (jer-serve: 100.74.87.20)</li>
+                    <li>Caddy proxy health verification</li>
+                    <li>Multiple Rails application monitoring (10 ports tracked)</li>
+                    <li>SSL certificate validation and expiry tracking</li>
+                    <li>Domain-to-deployment pipeline monitoring</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="content-section release-notes" id="releases">
+            <div class="release">
+                <h3>Version 1.1.0</h3>
+                <div class="release-date">August 5, 2025</div>
+                
+                <div class="release-section">
+                    <h4>Added</h4>
+                    <ul>
+                        <li>Progressive Web App (PWA) support for Safari "Save to Dock"</li>
+                        <li>Service Worker for offline support and enhanced notifications</li>
+                        <li>Navigation tabs for Features and Release Notes sections</li>
+                        <li>Custom Mon icons with atom-themed design</li>
+                        <li>Enhanced notification system with multiple fallback methods</li>
+                        <li>Version display in dashboard status area</li>
+                    </ul>
+                </div>
+
+                <div class="release-section">
+                    <h4>Fixed</h4>
+                    <ul>
+                        <li>Safari notification permissions now trigger on user interaction</li>
+                        <li>WebSocket URL handling for HTTPS/WSS connections</li>
+                        <li>Tab navigation functionality fully implemented</li>
+                        <li>Claude message handling in server</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="release">
+                <h3>Version 1.0.0</h3>
+                <div class="release-date">August 4, 2025</div>
+                
+                <div class="release-section">
+                    <h4>Added</h4>
+                    <ul>
+                        <li>Three.js 3D Avatar with geometric, atom-like Claude representation</li>
+                        <li>Real-time monitoring via WebSocket connection to jer-serve</li>
+                        <li>System metrics dashboard with CPU, Memory, Disk usage tracking</li>
+                        <li>Service status monitoring for Apache and Rails applications</li>
+                        <li>Smart notifications with critical alert handling</li>
+                        <li>Interactive avatar with click-to-interact functionality</li>
+                        <li>Status-aware animations and color-coded health indicators</li>
+                        <li>Natural language integration using Claude CLI</li>
+                        <li>Automated monitoring with 2-minute cron job scheduling</li>
+                        <li>Domain health checks via DNS resolution verification</li>
+                    </ul>
+                </div>
+
+                <div class="release-section">
+                    <h4>Infrastructure</h4>
+                    <ul>
+                        <li>Domain: mon.zice.app with SSL via Caddy proxy</li>
+                        <li>GitHub Repository: https://github.com/jeremedia/mon</li>
+                        <li>Monitoring Target: jer-serve (100.74.87.20) via Tailscale</li>
+                        <li>WebSocket Server: Mac dev machine (100.104.170.10:3001)</li>
+                        <li>Automated deployment through jer-serve infrastructure</li>
+                    </ul>
+                </div>
+
+                <div class="release-section">
+                    <h4>Technical Stack</h4>
+                    <ul>
+                        <li>Frontend: HTML5, CSS3, Vanilla JavaScript, Three.js</li>
+                        <li>Backend: Node.js with WebSocket (ws), Express, CORS</li>
+                        <li>Monitoring: Bash scripts with Claude CLI integration</li>
+                        <li>Infrastructure: Caddy, Apache, Tailscale, Google Cloud DNS</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div style="padding: 20px; background: #2a2a2a; border-radius: 8px; margin-top: 20px;">
+                <h4 style="color: #4CAF50; margin-bottom: 10px;">Planned Features</h4>
+                <div style="color: #ccc; font-size: 0.9rem;">
+                    <strong>v1.1.0:</strong> SSL certificate expiry monitoring, enhanced service discovery, mobile optimizations<br>
+                    <strong>v1.2.0:</strong> Multi-server monitoring, custom thresholds, advanced avatar expressions
                 </div>
             </div>
         </div>

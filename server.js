@@ -94,6 +94,9 @@ class MonServer {
             case 'log_event':
                 this.handleLogEvent(data.payload);
                 break;
+            case 'claude_message':
+                this.handleClaudeMessage(data.payload);
+                break;
             default:
                 console.log('Unknown monitoring data type:', data.type);
         }
@@ -168,6 +171,15 @@ class MonServer {
     handleLogEvent(event) {
         // Process log events and generate insights
         console.log(`📝 Log event: ${event.message}`);
+    }
+    
+    handleClaudeMessage(message) {
+        // Broadcast Claude's natural language status updates
+        console.log(`🤖 Claude says: ${message.message}`);
+        this.broadcast({
+            type: 'claude_message',
+            payload: message
+        });
     }
 
     checkDataFreshness() {
